@@ -1,36 +1,26 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Using CSS @property in Shadow DOM
 
-## Getting Started
+As per <https://stackoverflow.com/a/79037671/13649974>:
 
-First, run the development server:
+> ...property registrations are not scoped to a tree scope. All registrations, whether they appear in the outermost document or within a **shadow tree**, interact in a single global registration map for the Document...
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
-```
+Therefore, you can't use `@property` in `<style>` tags inside a Shadow DOM.
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+However, using PostCSS, manually registering the properties using `CSS.registerProperty`, and some shenanigans, you can achieve the same effect.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## How it works
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+PostCSS is used to find all `@property` declarations in the CSS and generate a list of `PropertyDefinition` objects. The names of these properties are then replaced with a unique identifier, and the `PropertyDefinition` objects are registered using `CSS.registerProperty`. The original names are replaced in the CSS and HTML with the unique identifiers. This way, we can use `@property` in Shadow DOM without multiple definitions clashing.
 
-## Learn More
+## Showcase
 
-To learn more about Next.js, take a look at the following resources:
+(video here)
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Limitations
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+- Including all of PostCSS in the final bundle might be a little heavy for some use cases.
+- Might not perfectly replace all variable names in the CSS and HTML.
 
-## Deploy on Vercel
+## License
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.

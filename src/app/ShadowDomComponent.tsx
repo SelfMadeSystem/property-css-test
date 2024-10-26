@@ -3,12 +3,11 @@ import postcss from "postcss";
 import { v4 as uuid } from "uuid";
 
 /**
- * Finds all registered CSS properties in a CSS string.
+ * Finds all registered CSS properties in a PostCSS root.
  *
  * Registered CSS properties are defined using the `@property` rule.
  */
-function findCssProperties(css: string): PropertyDefinition[] {
-  const root = postcss.parse(css);
+function findCssProperties(root: postcss.Root): PropertyDefinition[] {
   const properties: PropertyDefinition[] = [];
   root.walkAtRules("property", (rule) => {
     const property = {
@@ -37,38 +36,33 @@ function findCssProperties(css: string): PropertyDefinition[] {
 }
 
 /**
- * Removes all registered CSS properties from a CSS string.
+ * Removes all registered CSS properties from a PostCSS root.
+ *
+ * @returns The resulting CSS string.
  */
-function removeCssProperties(css: string) {
-  const root = postcss.parse(css);
+function removeCssProperties(root: postcss.Root) {
   root.walkAtRules("property", (rule) => {
     rule.remove();
   });
-  return root.toString();
 }
 
 /**
- * Replaces all instances of a CSS property in a CSS string with another
- * property name.
+ * Replaces all instances of a CSS properties with other properties in a PostCSS
+ * root.
  */
 function replaceCssProperty(
-  css: string,
-  oldProperty: string,
-  newProperty: string
+  root: postcss.Root,
+  replacements: [string, string][]
 ) {
-  const root = postcss.parse(css);
   root.walkDecls((decl) => {
-    if (decl.prop === oldProperty) {
-      decl.prop = newProperty;
-    }
-    if (decl.value.includes(oldProperty)) {
+    replacements.forEach(([oldProperty, newProperty]) => {
+      decl.prop = decl.prop.replace(new RegExp(oldProperty, "g"), newProperty);
       decl.value = decl.value.replace(
         new RegExp(oldProperty, "g"),
         newProperty
       );
-    }
+    });
   });
-  return root.toString();
 }
 
 /**
@@ -91,15 +85,14 @@ export function ShadowDomComponent({
   html: string;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
-  const noDomStyleRef = useRef<HTMLStyleElement>(null);
-  const noDomRef = useRef<HTMLDivElement>(null);
   const shadowRoot = useRef<ShadowRoot | null>(null);
 
   useEffect(() => {
     if (!previewRef.current) {
       return;
     }
-    const cssProperties = findCssProperties(css);
+    const postcssRoot = postcss.parse(css);
+    const cssProperties = findCssProperties(postcssRoot);
     const uuids = cssProperties.map(() => `--${uuid()}`);
 
     // Register all CSS properties
@@ -119,11 +112,9 @@ export function ShadowDomComponent({
 
     // Replace all CSS properties in the CSS string with the generated
     // property names
-    let replacedCss = css;
-    cssProperties.forEach((property, i) => {
-      replacedCss = replaceCssProperty(replacedCss, property.name, uuids[i]);
-    });
-    replacedCss = removeCssProperties(replacedCss);
+    removeCssProperties(postcssRoot);
+    replaceCssProperty(postcssRoot, cssProperties.map((p, i) => [p.name, uuids[i]]));
+    const replacedCss = postcssRoot.toString();
 
     // Time to render the shadow DOM
 
@@ -135,16 +126,9 @@ export function ShadowDomComponent({
     // Create a style element and append it to the shadow root
     const style = document.createElement("style");
     style.textContent = replacedCss;
+    shadowRoot.current.innerHTML = "";
     shadowRoot.current.appendChild(style);
     shadowRoot.current.innerHTML += replacedHtml;
-
-    // Create the no shadow DOM version
-    if (!noDomRef.current || !noDomStyleRef.current) {
-      return;
-    }
-
-    noDomRef.current.innerHTML = replacedHtml;
-    noDomStyleRef.current.textContent = replacedCss;
   }, [css, html]);
 
   return <div ref={previewRef}></div>;

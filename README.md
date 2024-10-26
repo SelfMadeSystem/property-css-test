@@ -14,7 +14,7 @@ PostCSS is used to find all `@property` declarations in the CSS and generate a l
 
 ## Showcase
 
-(video here)
+https://github.com/user-attachments/assets/2b879af6-8e63-4fe8-9931-6ae46464bf6b
 
 ## Limitations
 

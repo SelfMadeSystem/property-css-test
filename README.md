@@ -20,7 +20,7 @@ https://github.com/user-attachments/assets/2b879af6-8e63-4fe8-9931-6ae46464bf6b
 
 As this is a proof of concept, there are some limitations:
 
-- Including all of PostCSS in the final bundle might be a little heavy for some use cases.
+- Including all of PostCSS in the final bundle might be a little heavy for some use cases. (PostCSS isn't actually as big as I thought; it's significantly smaller than React)
 - Might not perfectly replace all variable names in the CSS and HTML.
 - Can't unregister properties. It's not possible to unregister properties in the CSSOM, so this is a limitation of the method.
 - Doesn't check if the browser supports `CSS.registerProperty`. It obviously won't work in browsers that don't support it.

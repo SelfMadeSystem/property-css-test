@@ -4,20 +4,23 @@ import { ExportData } from "@/components/ShadowDomCreator";
 import { ShadowDomViewer } from "@/components/ShadowDomViewer";
 import Link from "next/link";
 import { useState } from "react";
+import { sanitize } from "./sanitize";
 
 export default function Home() {
   const [data, setData] = useState<ExportData | undefined>(undefined);
   const [pasted, setPasted] = useState(false);
-  function paste() {
-    navigator.clipboard.readText().then((text) => {
-      try {
-        setData(JSON.parse(text));
-        setPasted(true);
-        setTimeout(() => setPasted(false), 2000);
-      } catch (e) {
-        console.error(e);
-      }
-    });
+  async function paste() {
+    const text = await navigator.clipboard.readText();
+
+    try {
+      const data = JSON.parse(text);
+      const safeData = await sanitize(data);
+      setData(safeData);
+      setPasted(true);
+      setTimeout(() => setPasted(false), 2000);
+    } catch (e) {
+      console.error(e);
+    }
   }
   return (
     <div className="flex flex-col gap-4 mx-auto max-w-3xl">

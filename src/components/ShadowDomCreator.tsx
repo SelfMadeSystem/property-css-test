@@ -77,12 +77,27 @@ function replaceHtmlProperty(
   return html.replace(new RegExp(oldProperty, "g"), newProperty);
 }
 
-export function ShadowDomComponent({
+/**
+ * Sanatizes a string so it can be used as a CSS property name.
+ */
+function sanitizePropertyName(name: string) {
+  return name.replace(/[^a-zA-Z0-9-]/g, "_");
+}
+
+export type ExportData = {
+  css: string;
+  html: string;
+  properties: PropertyDefinition[];
+};
+
+export function ShadowDomCreator({
   css,
   html,
+  setExportData,
 }: {
   css: string;
   html: string;
+  setExportData: (data: ExportData) => void;
 }) {
   const previewRef = useRef<HTMLDivElement>(null);
   const shadowRoot = useRef<ShadowRoot | null>(null);
@@ -93,27 +108,34 @@ export function ShadowDomComponent({
     }
     const postcssRoot = postcss.parse(css);
     const cssProperties = findCssProperties(postcssRoot);
-    const uuids = cssProperties.map(() => `--${uuid()}`);
+    const ids = cssProperties.map(({ name, inherits, initialValue, syntax }) =>
+      sanitizePropertyName(
+        `--${uuid()}-${name}-${initialValue}-${syntax}-${inherits}`
+      )
+    );
+
+    const replacedCssProperties = cssProperties.map((property, i) => ({
+      ...property,
+      name: ids[i],
+    }));
 
     // Register all CSS properties
-    cssProperties.forEach((property, i) => {
-      CSS.registerProperty({
-        ...property,
-        name: uuids[i],
-      });
-    });
+    replacedCssProperties.forEach(CSS.registerProperty);
 
     // Replace all CSS properties in the HTML string with the generated
     // property names
     let replacedHtml = html;
     cssProperties.forEach((property, i) => {
-      replacedHtml = replaceHtmlProperty(replacedHtml, property.name, uuids[i]);
+      replacedHtml = replaceHtmlProperty(replacedHtml, property.name, ids[i]);
     });
 
     // Replace all CSS properties in the CSS string with the generated
     // property names
     removeCssProperties(postcssRoot);
-    replaceCssProperty(postcssRoot, cssProperties.map((p, i) => [p.name, uuids[i]]));
+    replaceCssProperty(
+      postcssRoot,
+      cssProperties.map((p, i) => [p.name, ids[i]])
+    );
     const replacedCss = postcssRoot.toString();
 
     // Time to render the shadow DOM
@@ -129,7 +151,13 @@ export function ShadowDomComponent({
     shadowRoot.current.innerHTML = "";
     shadowRoot.current.appendChild(style);
     shadowRoot.current.innerHTML += replacedHtml;
-  }, [css, html]);
+
+    setExportData({
+      css: replacedCss,
+      html: replacedHtml,
+      properties: replacedCssProperties,
+    });
+  }, [css, html, setExportData]);
 
   return <div ref={previewRef}></div>;
 }
